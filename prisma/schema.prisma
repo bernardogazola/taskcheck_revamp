@@ -25,7 +25,7 @@ enum StatusRelatorio {
 
 // Modelos para better-auth
 model User {
-  id            Int    @id @default(autoincrement())
+  id            String    @id @default(cuid())
   name          String?
   email         String?   @unique
   emailVerified DateTime?
@@ -47,8 +47,8 @@ model User {
 }
 
 model Account {
-  id                 Int   @id @default(autoincrement())
-  userId             Int
+  id                 String   @id @default(cuid())
+  userId             String
   type               String
   provider           String
   providerAccountId  String
@@ -67,9 +67,9 @@ model Account {
 }
 
 model Session {
-  id           Int   @id @default(autoincrement())
+  id           String   @id @default(cuid())
   sessionToken String   @unique
-  userId       Int
+  userId       String
   expires      DateTime
   
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -100,7 +100,7 @@ model Curso {
 }
 
 model Aluno {
-  id_usuario  Int    @id
+  id_usuario  String    @id
   matricula   Int
   id_curso    Int
   
@@ -112,7 +112,7 @@ model Aluno {
 }
 
 model Professor {
-  id_usuario  Int    @id
+  id_usuario  String    @id
   
   usuario     User      @relation(fields: [id_usuario], references: [id], onDelete: Cascade)
   feedbacks   Feedback[]
@@ -124,7 +124,7 @@ model Professor {
 }
 
 model Coordenador {
-  id_usuario            Int    @id
+  id_usuario            String    @id
   id_curso_responsavel  Int
   
   usuario     User      @relation(fields: [id_usuario], references: [id], onDelete: Cascade)
@@ -155,7 +155,7 @@ model RelatorioAtividade {
   status            StatusRelatorio     @default(AGUARDANDO_VALIDACAO)
   horas_validadas   Int
   certificado       Bytes
-  id_aluno          Int
+  id_aluno          String
   id_categoria      Int
   
   aluno             Aluno               @relation(fields: [id_aluno], references: [id_usuario])
@@ -172,7 +172,7 @@ model Feedback {
   id               Int      @id @default(autoincrement())
   texto_feedback   String   @db.Text
   data_envio       DateTime @db.Date
-  id_professor     Int
+  id_professor     String
   id_relatorio     Int
   
   professor        Professor @relation(fields: [id_professor], references: [id_usuario])
@@ -188,7 +188,7 @@ model FeedbackHistorico {
   id_relatorio   Int
   texto_feedback String        @db.Text
   data_envio     DateTime      @default(now())
-  id_professor   Int?
+  id_professor   String?
   versao         Int?
   
   feedback       Feedback?     @relation(fields: [id_feedback], references: [id])
@@ -214,7 +214,7 @@ model HistoricoRelatorioAtividade {
 }
 
 model ProfessorCurso {
-  id_professor Int
+  id_professor String
   id_curso     Int
   
   professor    Professor @relation(fields: [id_professor], references: [id_usuario], onDelete: Cascade)
@@ -229,7 +229,7 @@ model ReversaoValidacao {
   id_relatorio   Int
   justificativa  String   @db.Text
   data_reversao  DateTime @default(now())
-  id_professor   Int
+  id_professor   String
   
   relatorio      RelatorioAtividade @relation(fields: [id_relatorio], references: [id])
   professor      Professor @relation(fields: [id_professor], references: [id_usuario])
