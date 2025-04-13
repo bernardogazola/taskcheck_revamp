@@ -15,34 +15,20 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, CompassIcon, Send } from "lucide-react";
+import { LayoutDashboard, CompassIcon, Send, Settings } from "lucide-react";
 import { useSession } from "@/lib/auth-client";
-// MOCK DE DADOS --- TODO: REMOVER ESSA PORRA
-const data = {
-  navMain: [
-    {
-      title: "Geral",
-      items: [
-        {
-          title: "Dashboard",
-          url: "#",
-          icon: LayoutDashboard,
-          isActive: true,
-        },
-        {
-          title: "Enviar Atividades",
-          url: "#",
-          icon: Send,
-        },
-        {
-          title: "Sei lá",
-          url: "#",
-          icon: CompassIcon,
-        },
-      ],
-    },
-  ],
-};
+import { Role, User } from "@prisma/client";
+import { usePathname } from "next/navigation";
+import APP_SIDEBAR from "@/constants/appSidebar";
+interface AppSidebarProps {
+  title?: string;
+  items?: {
+    title: string;
+    url: string;
+    icon: React.ComponentType<any>;
+    roles: Role[];
+  }[];
+}
 
 function SidebarLogo() {
   return (
@@ -67,6 +53,9 @@ function SidebarLogo() {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession();
   const user = session?.user;
+  const role = user?.role as Role;
+  const pathname = usePathname();
+  const items = APP_SIDEBAR.navMain;
 
   return (
     <Sidebar collapsible="icon" variant="inset" {...props}>
@@ -74,34 +63,40 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarLogo />
       </SidebarHeader>
       <SidebarContent className="-mt-2">
-        {data.navMain.map((item) => (
+        {items.map((item) => (
           <SidebarGroup key={item.title}>
             <SidebarGroupLabel className="uppercase text-muted-foreground/65">
               {item.title}
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {item.items.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      className="group/menu-button group-data-[collapsible=icon]:px-[5px]! font-medium gap-3 h-9 [&>svg]:size-auto"
-                      tooltip={item.title}
-                      isActive={item.isActive}
-                    >
-                      <a href={item.url}>
-                        {item.icon && (
-                          <item.icon
-                            className="text-muted-foreground/65 group-data-[active=true]/menu-button:text-primary"
-                            size={22}
-                            aria-hidden="true"
-                          />
-                        )}
-                        <span>{item.title}</span>
-                      </a>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                {item.items
+                  ?.filter(
+                    (menuItem) =>
+                      !menuItem.roles.length ||
+                      (role && menuItem.roles.includes(role))
+                  )
+                  .map((menuItem) => (
+                    <SidebarMenuItem key={menuItem.title}>
+                      <SidebarMenuButton
+                        asChild
+                        className="group/menu-button group-data-[collapsible=icon]:px-[5px]! font-medium gap-3 h-9 [&>svg]:size-auto"
+                        tooltip={menuItem.title}
+                        isActive={pathname === menuItem.url}
+                      >
+                        <Link href={menuItem.url}>
+                          {menuItem.icon && (
+                            <menuItem.icon
+                              className="text-muted-foreground/65 group-data-[active=true]/menu-button:text-primary"
+                              size={22}
+                              aria-hidden="true"
+                            />
+                          )}
+                          <span>{menuItem.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

@@ -6,7 +6,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import ToggleTheme from "@/components/theme/ToggleTheme";
-
+import APP_SIDEBAR from "@/constants/appSidebar";
 const Sidebar = ({ children }: { children: React.ReactNode }) => {
   return (
     <SidebarProvider>

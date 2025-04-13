@@ -3,7 +3,6 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { Role } from "@prisma/client";
 import prisma from "@/lib/database/prisma";
-
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET!,
   appName: "TaskCheck",
@@ -31,6 +30,11 @@ export const auth = betterAuth({
     cookieCache: {
       enabled: true,
       maxAge: 300,
+    },
+    additionalFields: {
+      role: {
+        type: "string",
+      },
     },
   },
   callbacks: {

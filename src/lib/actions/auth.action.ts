@@ -7,6 +7,7 @@ import action from "@/lib/handlers/action";
 import { signInSchema, signUpSchema } from "@/lib/validators/authSchema";
 import { Role } from "@prisma/client";
 import ROUTES from "@/constants/routes";
+import prisma from "@/lib/database/prisma";
 
 export async function signUp(params: AuthCredentials): Promise<ActionResponse> {
   const validationResult = await action({
@@ -23,6 +24,14 @@ export async function signUp(params: AuthCredentials): Promise<ActionResponse> {
   try {
     const result = await auth.api.signUpEmail({
       body: { name, email, password, role: Role.ALUNO },
+    });
+
+    const aluno = await prisma.aluno.create({
+      data: {
+        id_usuario: result.user.id,
+        matricula: 1234567890,
+        id_curso: 1,
+      },
     });
 
     return { success: true };
