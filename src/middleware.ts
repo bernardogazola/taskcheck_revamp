@@ -3,7 +3,6 @@ import { getSessionCookie } from "better-auth/cookies";
 
 export const config = {
   matcher: [
-    "/dashboard",
     "/dashboard/:path*",
     "/relatorios/:path*",
     "/categorias/:path*",
