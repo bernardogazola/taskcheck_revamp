@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 
 export const config = {
-  runtime: "nodejs",
   matcher: [
+    "/dashboard",
     "/dashboard/:path*",
     "/relatorios/:path*",
     "/categorias/:path*",

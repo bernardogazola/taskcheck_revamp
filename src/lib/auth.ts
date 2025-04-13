@@ -27,6 +27,12 @@ export const auth = betterAuth({
     requireEmailVerification: false,
   },
   socialProviders: {},
+  session: {
+    cookieCache: {
+      enabled: true,
+      maxAge: 300,
+    },
+  },
   callbacks: {
     async session({
       session,
