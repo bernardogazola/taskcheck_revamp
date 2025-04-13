@@ -67,9 +67,7 @@ export function AuthForm({ type, className, ...props }: AuthFormProps) {
             toast.success("Login realizado com sucesso");
             router.push(ROUTES.DASHBOARD);
           } else {
-            toast.error(`Erro: ${resultSignIn?.error}`, {
-              description: resultSignIn?.error?.message,
-            });
+            toast.error(`Erro: ${resultSignIn?.error?.message}`);
             setErrorMessage(
               resultSignIn?.error?.message ?? "Erro ao fazer login"
             );
@@ -88,9 +86,7 @@ export function AuthForm({ type, className, ...props }: AuthFormProps) {
             toast.success("Conta criada com sucesso");
             router.push(ROUTES.DASHBOARD);
           } else {
-            toast.error(`Erro: ${resultSignUp?.error}`, {
-              description: resultSignUp?.error?.message,
-            });
+            toast.error(`Erro: ${resultSignUp?.error?.message}`);
             setErrorMessage(
               resultSignUp?.error?.message ?? "Erro ao criar conta"
             );

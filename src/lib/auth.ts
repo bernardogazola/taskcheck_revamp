@@ -12,9 +12,9 @@ export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),
-  advanced: {
-    cookiePrefix: "taskcheck",
-  },
+  // advanced: {
+  //   cookiePrefix: "taskcheck",
+  // },
   user: {
     additionalFields: {
       role: {

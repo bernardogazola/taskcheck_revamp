@@ -16,14 +16,9 @@ import {
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
 import { LayoutDashboard, CompassIcon, Send } from "lucide-react";
-
+import { useSession } from "@/lib/auth-client";
 // MOCK DE DADOS --- TODO: REMOVER ESSA PORRA
 const data = {
-  user: {
-    name: "Bernardo Gazola",
-    email: "bernardogazola@pm.me",
-    avatar: "",
-  },
   navMain: [
     {
       title: "Geral",
@@ -70,6 +65,9 @@ function SidebarLogo() {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { data: session } = useSession();
+  const user = session?.user;
+
   return (
     <Sidebar collapsible="icon" variant="inset" {...props}>
       <SidebarHeader className="h-16 max-md:mt-2 mb-2 justify-center">
@@ -110,7 +108,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ))}
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={user} />
       </SidebarFooter>
     </Sidebar>
   );

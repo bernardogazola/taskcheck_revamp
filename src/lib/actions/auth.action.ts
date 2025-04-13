@@ -6,6 +6,7 @@ import handleError from "@/lib/handlers/error";
 import action from "@/lib/handlers/action";
 import { signInSchema, signUpSchema } from "@/lib/validators/authSchema";
 import { Role } from "@prisma/client";
+import ROUTES from "@/constants/routes";
 
 export async function signUp(params: AuthCredentials): Promise<ActionResponse> {
   const validationResult = await action({
@@ -48,6 +49,7 @@ export async function signIn(
     const result = await auth.api.signInEmail({
       body: { email, password },
       headers: await headers(),
+      callbackURL: ROUTES.DASHBOARD,
     });
 
     return { success: true };

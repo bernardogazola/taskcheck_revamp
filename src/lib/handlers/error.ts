@@ -3,7 +3,7 @@ import { RequestError, ValidationError } from "@/lib/http-errors";
 import { ZodError } from "zod";
 import { APIError } from "better-auth/api";
 import logger from "@/lib/logger";
-
+import AUTH_ERROR_CODES from "@/constants/authErrorCodes";
 export type ResponseType = "api" | "server";
 
 const formatResponse = (
@@ -67,12 +67,23 @@ const handleError = (error: unknown, responseType: ResponseType = "server") => {
 
     case "api": {
       const apiError = error as APIError;
-      logger.error({ err: apiError }, `Erro de API: ${apiError.message}`);
+      const errorCodes = AUTH_ERROR_CODES;
+      const getErrorMessage = (code: string, lang: "pt_BR") => {
+        if (code in errorCodes) {
+          return errorCodes[code as keyof typeof errorCodes][lang];
+        }
+        return "Erro inesperado";
+      };
+
+      logger.error(
+        { err: apiError },
+        `Erro de API: ${getErrorMessage(apiError.body?.code!, "pt_BR")}`
+      );
 
       return formatResponse(
         responseType,
         apiError.statusCode,
-        apiError.message
+        getErrorMessage(apiError.body?.code!, "pt_BR")
       );
     }
 
