@@ -1,6 +1,12 @@
-import { CompassIcon, Send, LayoutDashboard } from "lucide-react";
-import { Role } from "@prisma/client";
-
+import {
+  LayoutDashboard,
+  Send,
+  Users,
+  GraduationCap,
+  BookCheck,
+  BookOpen,
+} from "lucide-react";
+import ROUTES from "@/constants/routes";
 const APP_SIDEBAR = {
   navMain: [
     {
@@ -8,21 +14,33 @@ const APP_SIDEBAR = {
       items: [
         {
           title: "Dashboard",
-          url: "/dashboard",
+          url: ROUTES.DASHBOARD,
           icon: LayoutDashboard,
-          roles: [Role.ALUNO, Role.COORDENADOR, Role.PROFESSOR] as Role[],
+          roles: ["aluno", "professor", "coordenador", "admin"],
         },
         {
-          title: "Enviar Atividades",
-          url: "/dashboard/enviar-atividade",
-          icon: Send,
-          roles: [Role.ALUNO] as Role[],
+          title: "Atividades",
+          url: ROUTES.DASHBOARD_ALUNO.ATIVIDADES,
+          icon: BookCheck,
+          roles: ["aluno"],
         },
         {
-          title: "Sei lá",
-          url: "#",
-          icon: CompassIcon,
-          roles: [Role.PROFESSOR] as Role[],
+          title: "Usuários",
+          url: ROUTES.DASHBOARD_ADMIN.USERS,
+          icon: Users,
+          roles: ["admin"],
+        },
+        {
+          title: "Cursos",
+          url: ROUTES.DASHBOARD_ADMIN.CURSOS,
+          icon: GraduationCap,
+          roles: ["admin"],
+        },
+        {
+          title: "Categorias",
+          url: ROUTES.DASHBOARD_COORDENADOR.CATEGORIAS,
+          icon: BookOpen,
+          roles: ["coordenador"],
         },
       ],
     },

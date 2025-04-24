@@ -3,7 +3,7 @@ import { RequestError, ValidationError } from "@/lib/http-errors";
 import { ZodError } from "zod";
 import { APIError } from "better-auth/api";
 import logger from "@/lib/logger";
-import AUTH_ERROR_CODES from "@/constants/authErrorCodes";
+import ERROR_CODES from "@/constants/errorCodes";
 export type ResponseType = "api" | "server";
 
 const formatResponse = (
@@ -67,7 +67,7 @@ const handleError = (error: unknown, responseType: ResponseType = "server") => {
 
     case "api": {
       const apiError = error as APIError;
-      const errorCodes = AUTH_ERROR_CODES;
+      const errorCodes = ERROR_CODES;
       const getErrorMessage = (code: string, lang: "pt_BR") => {
         if (code in errorCodes) {
           return errorCodes[code as keyof typeof errorCodes][lang];

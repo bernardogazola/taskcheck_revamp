@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,9 +17,20 @@ import { EyeIcon, EyeOffIcon, LoaderCircle } from "lucide-react";
 import { signInSchema, signUpSchema } from "@/lib/validators/authSchema";
 import { useForm } from "@tanstack/react-form";
 import { signIn, signUp } from "@/lib/actions/auth.action";
+import { getAllCursos } from "@/lib/actions/curso.action";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import ROUTES from "@/constants/routes";
+import ToggleTheme from "@/components/theme/ToggleTheme";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Curso } from "@prisma/client";
+import { useQuery } from "@tanstack/react-query";
 
 interface AuthFormProps extends React.HTMLAttributes<HTMLDivElement> {
   type: "signin" | "signup";
@@ -34,6 +45,18 @@ export function AuthForm({ type, className, ...props }: AuthFormProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const isSignIn = type === "signin";
+
+  const {
+    data: cursosData,
+    isLoading: isLoadingCursos,
+    error,
+  } = useQuery({
+    queryKey: ["cursos"],
+    queryFn: async () => await getAllCursos(),
+    enabled: !isSignIn,
+  });
+
+  const cursos = cursosData?.data || [];
 
   const togglePasswordVisibility = () => {
     setShowPassword((prev) => !prev);
@@ -51,6 +74,7 @@ export function AuthForm({ type, className, ...props }: AuthFormProps) {
       password: "",
       ...(isSignIn ? {} : { name: "" }),
       ...(isSignIn ? {} : { confirmPassword: "" }),
+      ...(isSignIn ? {} : { curso: "" }),
     },
     validators: {
       onChange: schema,
@@ -78,6 +102,7 @@ export function AuthForm({ type, className, ...props }: AuthFormProps) {
             email: value.email,
             password: value.password,
             confirmPassword: value.confirmPassword || "",
+            curso: value.curso || "",
           };
 
           const resultSignUp = (await signUp(signUpData)) as ActionResponse;
@@ -170,11 +195,13 @@ export function AuthForm({ type, className, ...props }: AuthFormProps) {
                         value={field.state.value}
                         onChange={(e) => field.handleChange(e.target.value)}
                         aria-invalid={
+                          !isSignIn &&
                           field.state.meta.isTouched &&
                           !!field.state.meta.errors.length
                         }
                       />
-                      {field.state.meta.isTouched &&
+                      {!isSignIn &&
+                        field.state.meta.isTouched &&
                         field.state.meta.errors.length > 0 && (
                           <p className="text-sm text-destructive">
                             {field.state.meta.errors[0]?.message}
@@ -208,6 +235,7 @@ export function AuthForm({ type, className, ...props }: AuthFormProps) {
                           value={field.state.value}
                           onChange={(e) => field.handleChange(e.target.value)}
                           aria-invalid={
+                            !isSignIn &&
                             field.state.meta.isTouched &&
                             !!field.state.meta.errors.length
                           }
@@ -225,7 +253,8 @@ export function AuthForm({ type, className, ...props }: AuthFormProps) {
                           )}
                         </button>
                       </div>
-                      {field.state.meta.isTouched &&
+                      {!isSignIn &&
+                        field.state.meta.isTouched &&
                         field.state.meta.errors.length > 0 && (
                           <p className="text-sm text-destructive">
                             {field.state.meta.errors[0]?.message}
@@ -275,6 +304,55 @@ export function AuthForm({ type, className, ...props }: AuthFormProps) {
                   </form.Field>
                 )}
 
+                {!isSignIn && (
+                  <form.Field name="curso">
+                    {(field) => (
+                      <div className="grid gap-2">
+                        <Label htmlFor="curso">Curso</Label>
+                        <Select
+                          onValueChange={(value) => field.handleChange(value)}
+                          value={field.state.value}
+                          disabled={isLoading || isLoadingCursos}
+                        >
+                          <SelectTrigger
+                            id="curso"
+                            className="w-full"
+                            aria-invalid={
+                              field.state.meta.isTouched &&
+                              !!field.state.meta.errors.length
+                            }
+                          >
+                            <SelectValue
+                              placeholder={
+                                isLoadingCursos
+                                  ? "Carregando cursos..."
+                                  : "Selecione um curso"
+                              }
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {!isLoadingCursos &&
+                              cursos.map((curso: Curso) => (
+                                <SelectItem
+                                  key={curso.id}
+                                  value={curso.id.toString()}
+                                >
+                                  {curso.nome}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                        {field.state.meta.isTouched &&
+                          field.state.meta.errors.length > 0 && (
+                            <p className="text-sm text-destructive">
+                              {(field.state.meta.errors[0] as any)?.message}
+                            </p>
+                          )}
+                      </div>
+                    )}
+                  </form.Field>
+                )}
+
                 {errorMessage && (
                   <p className="text-sm text-destructive">{errorMessage}</p>
                 )}
@@ -312,8 +390,11 @@ export function AuthForm({ type, className, ...props }: AuthFormProps) {
         Ao continuar, você concorda com nossos <a href="#">Termos de Serviço</a>{" "}
         e <a href="#">Política de Privacidade</a>.
       </div>
+      <div className="flex justify-center">
+        <ToggleTheme />
+      </div>
     </div>
   );
 }
 
-export { AuthForm as LoginForm };
+export default AuthForm;

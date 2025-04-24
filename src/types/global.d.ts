@@ -13,3 +13,5 @@ type ErrorResponse = ActionResponse<undefined> & { success: false };
 
 type APIErrorResponse = NextResponse<ErrorResponse>;
 type APIResponse<T = null> = NextResponse<SuccessResponse<T> | ErrorResponse>;
+
+declare module "unique-slug";

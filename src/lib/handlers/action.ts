@@ -5,16 +5,20 @@ import { UnauthorizedError, ValidationError } from "@/lib/http-errors";
 import { auth, Session } from "@/lib/auth";
 import { headers } from "next/headers";
 
+type Role = "aluno" | "professor" | "coordenador" | "admin";
+
 type ActionOptions<T> = {
   params?: T;
   schema?: ZodSchema<T>;
   authorize?: boolean;
+  requiredRole?: Role | Role[];
 };
 
 async function action<T>({
   params,
   schema,
   authorize = false,
+  requiredRole,
 }: ActionOptions<T>) {
   if (schema && params) {
     try {
@@ -38,7 +42,19 @@ async function action<T>({
     });
 
     if (!session) {
-      return new UnauthorizedError();
+      return new UnauthorizedError("Não autorizado");
+    }
+
+    if (requiredRole) {
+      if (Array.isArray(requiredRole)) {
+        if (!requiredRole.includes(session.user.role as Role)) {
+          return new UnauthorizedError("Não autorizado");
+        }
+      } else {
+        if (session.user.role !== requiredRole) {
+          return new UnauthorizedError("Não autorizado");
+        }
+      }
     }
   }
 

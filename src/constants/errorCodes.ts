@@ -1,4 +1,5 @@
-const AUTH_ERROR_CODES = {
+const ERROR_CODES = {
+  // Auth/User
   USER_ALREADY_EXISTS: {
     pt_BR: "Usuário já cadastrado",
   },
@@ -68,6 +69,41 @@ const AUTH_ERROR_CODES = {
   ACCOUNT_NOT_FOUND: {
     pt_BR: "Conta não encontrada",
   },
+  // Admin
+  YOU_CANNOT_BAN_YOURSELF: {
+    pt_BR: "Você não pode banir a si mesmo",
+  },
+  YOU_ARE_NOT_ALLOWED_TO_CHANGE_USERS_ROLE: {
+    pt_BR: "Você não tem permissão para alterar o papel dos usuários",
+  },
+  YOU_ARE_NOT_ALLOWED_TO_CREATE_USERS: {
+    pt_BR: "Você não tem permissão para criar usuários",
+  },
+  YOU_ARE_NOT_ALLOWED_TO_LIST_USERS: {
+    pt_BR: "Você não tem permissão para listar usuários",
+  },
+  YOU_ARE_NOT_ALLOWED_TO_LIST_USERS_SESSIONS: {
+    pt_BR: "Você não tem permissão para listar sessões de usuários",
+  },
+  YOU_ARE_NOT_ALLOWED_TO_BAN_USERS: {
+    pt_BR: "Você não tem permissão para banir usuários",
+  },
+  YOU_ARE_NOT_ALLOWED_TO_IMPERSONATE_USERS: {
+    pt_BR: "Você não tem permissão para personificar usuários",
+  },
+  YOU_ARE_NOT_ALLOWED_TO_REVOKE_USERS_SESSIONS: {
+    pt_BR: "Você não tem permissão para revogar sessões de usuários",
+  },
+  YOU_ARE_NOT_ALLOWED_TO_DELETE_USERS: {
+    pt_BR: "Você não tem permissão para excluir usuários",
+  },
+  YOU_ARE_NOT_ALLOWED_TO_SET_USERS_PASSWORD: {
+    pt_BR: "Você não tem permissão para definir a senha dos usuários",
+  },
+  BANNED_USER: {
+    pt_BR:
+      "Você está banido. Por favor, contate o suporte se você acredita que isso é um erro.",
+  },
 };
 
-export default AUTH_ERROR_CODES;
+export default ERROR_CODES;

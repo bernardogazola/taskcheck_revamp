@@ -12,7 +12,7 @@ export const relatorioSchema = z.object({
   data_realizacao: z.string().refine((data) => !isNaN(Date.parse(data)), {
     message: "Data inválida",
   }),
-  id_categoria: z.number().int().positive({ message: "Categoria inválida" }),
+  id_categoria: z.string().min(1, { message: "Categoria inválida" }),
   certificado: z
     .instanceof(File)
     .refine((file) => file.size <= 5 * 1024 * 1024, {
@@ -22,6 +22,8 @@ export const relatorioSchema = z.object({
       message: "O arquivo deve estar no formato PDF",
     }),
 });
+
+export type RelatorioFormData = z.infer<typeof relatorioSchema>;
 
 export const feedbackSchema = z.object({
   texto_feedback: z

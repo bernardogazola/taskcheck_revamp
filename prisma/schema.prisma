@@ -9,13 +9,6 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-enum Role {
-  ADMIN
-  COORDENADOR
-  PROFESSOR
-  ALUNO
-}
-
 enum StatusRelatorio {
   AGUARDANDO_VALIDACAO
   INVALIDO
@@ -26,13 +19,16 @@ enum StatusRelatorio {
 // Modelos para better-auth
 model User {
   id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
+  name          String
+  email         String
   emailVerified Boolean
   image         String?
-  role          Role      @default(ALUNO)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  role          String?   @default("aluno")
+  banned        Boolean?
+  banReason     String?
+  banExpires    DateTime?
 
   accounts      Account[]
   sessions      Session[]
@@ -42,6 +38,8 @@ model User {
   professor     Professor?
   coordenador   Coordenador?
 
+  @@unique([email])
+  @@index([email])
   @@map("users")
 }
 
@@ -61,6 +59,7 @@ model Account {
   createdAt             DateTime
   updatedAt             DateTime
 
+  @@index([accountId])
   @@map("accounts")
 }
 
@@ -73,9 +72,13 @@ model Session {
   ipAddress String?
   userAgent String?
   userId    String
-  
+  impersonatedBy String?
+  role String? @default("aluno")
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([token])
+  @@index([token, userId])
   @@map("sessions")
 }
 
@@ -92,8 +95,9 @@ model Verification {
 
 // Modelos de aplicação
 model Curso {
-  id         Int      @id @default(autoincrement())
-  nome       String   @db.VarChar(100)
+  id                           Int      @id @default(autoincrement())
+  nome                         String
+  horasComplementaresObrigatorias Int
   
   alunos        Aluno[]
   categorias    Categoria[]
@@ -105,7 +109,7 @@ model Curso {
 
 model Aluno {
   id_usuario  String    @id
-  matricula   Int
+  matricula   Int?
   id_curso    Int
   
   usuario     User      @relation(fields: [id_usuario], references: [id], onDelete: Cascade)
@@ -132,7 +136,7 @@ model Coordenador {
   id_curso_responsavel  Int
   
   usuario     User      @relation(fields: [id_usuario], references: [id], onDelete: Cascade)
-  curso       Curso     @relation(fields: [id_curso_responsavel], references: [id])
+  curso       Curso     @relation(fields: [id_curso_responsavel], references: [id], onDelete: Cascade)
 
   @@map("coordenador")
 }
@@ -144,7 +148,7 @@ model Categoria {
   carga_horaria   Int
   id_curso        Int
   
-  curso           Curso    @relation(fields: [id_curso], references: [id])
+  curso           Curso    @relation(fields: [id_curso], references: [id], onDelete: Cascade)
   relatorios      RelatorioAtividade[]
 
   @@map("categoria")
@@ -152,18 +156,18 @@ model Categoria {
 
 model RelatorioAtividade {
   id                Int                 @id @default(autoincrement())
-  nome              String              @db.VarChar(100)
-  texto_reflexao    String              @db.Text
-  data_realizacao   DateTime            @db.Date
-  data_envio        DateTime            @db.Date
+  nome              String              
+  texto_reflexao    String              
+  data_realizacao   DateTime            
+  data_envio        DateTime            
   status            StatusRelatorio     @default(AGUARDANDO_VALIDACAO)
   horas_validadas   Int
-  certificado       Bytes
+  certificado       String?
   id_aluno          String
   id_categoria      Int
   
   aluno             Aluno               @relation(fields: [id_aluno], references: [id_usuario])
-  categoria         Categoria           @relation(fields: [id_categoria], references: [id])
+  categoria         Categoria?           @relation(fields: [id_categoria], references: [id], onDelete: Cascade)
   feedbacks         Feedback[]
   historico         HistoricoRelatorioAtividade[]
   reversaoValidacao ReversaoValidacao[]

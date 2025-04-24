@@ -5,9 +5,18 @@ import { headers } from "next/headers";
 import handleError from "@/lib/handlers/error";
 import action from "@/lib/handlers/action";
 import { signInSchema, signUpSchema } from "@/lib/validators/authSchema";
-import { Role } from "@prisma/client";
 import ROUTES from "@/constants/routes";
 import prisma from "@/lib/database/prisma";
+import { Curso } from "@prisma/client";
+
+export async function getAllCursos(): Promise<ActionResponse<Curso[]>> {
+  try {
+    const cursos = await prisma.curso.findMany();
+    return { success: true, data: cursos };
+  } catch (error) {
+    return handleError(error) as ErrorResponse;
+  }
+}
 
 export async function signUp(params: AuthCredentials): Promise<ActionResponse> {
   const validationResult = await action({
@@ -19,21 +28,19 @@ export async function signUp(params: AuthCredentials): Promise<ActionResponse> {
     return handleError(validationResult) as ErrorResponse;
   }
 
-  const { name, email, password } = validationResult.params!;
+  const { name, email, password, curso } = validationResult.params!;
 
   try {
     const result = await auth.api.signUpEmail({
-      body: { name, email, password, role: Role.ALUNO },
+      body: { name, email, password, role: "aluno" },
     });
 
     const aluno = await prisma.aluno.create({
       data: {
         id_usuario: result.user.id,
-        matricula: 1234567890,
-        id_curso: 1,
+        id_curso: parseInt(curso),
       },
     });
-
     return { success: true };
   } catch (error) {
     return handleError(error) as ErrorResponse;

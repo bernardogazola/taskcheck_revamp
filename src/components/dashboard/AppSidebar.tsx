@@ -15,18 +15,18 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, CompassIcon, Send, Settings } from "lucide-react";
-import { useSession } from "@/lib/auth-client";
-import { Role, User } from "@prisma/client";
+import { useSession, getSession } from "@/lib/auth-client";
 import { usePathname } from "next/navigation";
 import APP_SIDEBAR from "@/constants/appSidebar";
+import { useQuery } from "@tanstack/react-query";
+
 interface AppSidebarProps {
   title?: string;
   items?: {
     title: string;
     url: string;
     icon: React.ComponentType<any>;
-    roles: Role[];
+    roles: string[];
   }[];
 }
 
@@ -53,9 +53,11 @@ function SidebarLogo() {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession();
   const user = session?.user;
-  const role = user?.role as Role;
+  const role = user?.role;
   const pathname = usePathname();
   const items = APP_SIDEBAR.navMain;
+  console.log(role);
+  console.log(session);
 
   return (
     <Sidebar collapsible="icon" variant="inset" {...props}>

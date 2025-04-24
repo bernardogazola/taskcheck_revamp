@@ -49,6 +49,7 @@ export const signUpSchema = z
     confirmPassword: z
       .string()
       .min(1, { message: "Confirmação de senha é obrigatória" }),
+    curso: z.string().min(1, { message: "Curso é obrigatório" }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "As senhas não coincidem",
