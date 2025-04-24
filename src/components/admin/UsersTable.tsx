@@ -13,7 +13,6 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { CircleAlertIcon, EllipsisIcon } from "lucide-react";
 
-import { cn } from "@/lib/utils";
 import { authClient } from "@/lib/auth-client";
 import {
   AlertDialog,
@@ -30,11 +29,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuPortal,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
