@@ -23,7 +23,11 @@ import {
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import ROUTES from "@/constants/routes";
-import { uploadFile } from "@/lib/actions/file.action";
+import {
+  uploadFile,
+  downloadFile,
+  deleteFile,
+} from "@/lib/actions/file.action";
 
 interface ActivitiesResponse {
   atividades: RelatorioAtividade[];
@@ -223,6 +227,13 @@ export async function addActivity(
       throw new NotFoundError("Categoria não encontrada");
     }
 
+    const { success: certificado_success, data: certificado_data } =
+      await uploadFile(certificado);
+
+    if (!certificado_success) {
+      throw new Error("Erro ao fazer upload do certificado");
+    }
+
     const atividade = await prisma.relatorioAtividade.create({
       data: {
         nome,
@@ -230,20 +241,154 @@ export async function addActivity(
         data_realizacao: new Date(data_realizacao),
         data_envio: new Date(),
         horas_validadas: 0,
-        // TODO: Add certificado
-        // certificado: data.certificado,
+        certificado: certificado_data.path,
         id_aluno: aluno.id_usuario,
         id_categoria: categoria.id,
       },
     });
 
-    const certificado_action = await uploadFile(certificado);
-
-    console.log(certificado_action);
+    console.log(certificado_data);
 
     return {
       success: true,
     };
+  } catch (error) {
+    return handleError(error) as ErrorResponse;
+  }
+}
+
+type DownloadResponseData = {
+  arrayBuffer: ArrayBuffer;
+  filename: string;
+  contentType: string;
+};
+
+export type DownloadActionResponse =
+  | { success: true; data: DownloadResponseData }
+  | ErrorResponse;
+
+export async function downloadCertificado(
+  filename: string
+): Promise<DownloadActionResponse> {
+  const validationResult = await action({
+    params: { filename },
+    schema: z.object({ filename: z.string() }),
+    authorize: true,
+    requiredRole: "aluno",
+  });
+
+  if (validationResult instanceof Error) {
+    return handleError(validationResult) as ErrorResponse;
+  }
+
+  const session = validationResult.session;
+  const reportOwner = await prisma.relatorioAtividade.findFirst({
+    where: { certificado: filename, id_aluno: session?.user.id },
+    select: { id: true },
+  });
+  if (!reportOwner) {
+    return handleError(
+      new ForbiddenError("Permission denied to download this certificate.")
+    ) as ErrorResponse;
+  }
+
+  try {
+    const { success, data: blobData } = await downloadFile(filename);
+
+    if (!success || !(blobData instanceof Blob)) {
+      throw new NotFoundError(
+        "Certificado não encontrado ou erro no download."
+      );
+    }
+
+    const arrayBuffer = await blobData.arrayBuffer();
+
+    return {
+      success: true,
+      data: {
+        arrayBuffer: arrayBuffer,
+        filename: filename,
+        contentType: blobData.type || "application/pdf",
+      },
+    };
+  } catch (error) {
+    return handleError(error) as ErrorResponse;
+  }
+}
+
+export async function editActivity(
+  reportId: number,
+  data: RelatorioFormData
+): Promise<ActionResponse> {
+  const validationResult = await action({
+    params: { reportId, ...data },
+    schema: z.object({
+      reportId: z.number().int().positive(),
+      ...relatorioSchema.shape,
+    }),
+    authorize: true,
+    requiredRole: "aluno",
+  });
+
+  if (validationResult instanceof Error) {
+    return handleError(validationResult) as ErrorResponse;
+  }
+
+  const session = validationResult.session;
+  const validatedData = validationResult.params!;
+
+  try {
+    const existingReport = await prisma.relatorioAtividade.findUnique({
+      where: { id: reportId },
+    });
+
+    if (!existingReport) {
+      throw new NotFoundError("Relatório não encontrado");
+    }
+
+    if (existingReport.id_aluno !== session?.user.id) {
+      throw new ForbiddenError(
+        "Você não tem permissão para editar este relatório"
+      );
+    }
+
+    if (existingReport.status !== StatusRelatorio.AGUARDANDO_VALIDACAO) {
+      throw new ForbiddenError(
+        "Apenas relatórios em status 'Aguardando Validação' podem ser editados"
+      );
+    }
+
+    let certificatePath = existingReport.certificado;
+    let oldCertificatePathToDelete: string | null = null;
+
+    if (validatedData.certificado && validatedData.certificado.size > 0) {
+      const uploadResult = await uploadFile(validatedData.certificado);
+      if (!uploadResult.success) {
+        throw new Error("Erro ao fazer upload do novo certificado");
+      }
+      oldCertificatePathToDelete = existingReport.certificado;
+      certificatePath = uploadResult.data.path;
+    }
+
+    await prisma.relatorioAtividade.update({
+      where: { id: reportId },
+      data: {
+        nome: validatedData.nome,
+        texto_reflexao: validatedData.texto_reflexao,
+        data_realizacao: new Date(validatedData.data_realizacao),
+        id_categoria: parseInt(validatedData.id_categoria),
+        certificado: certificatePath,
+      },
+    });
+
+    if (oldCertificatePathToDelete) {
+      const deleteResult = await deleteFile(oldCertificatePathToDelete);
+      if (!deleteResult.success) {
+        throw new Error("Erro ao deletar o certificado antigo");
+      }
+    }
+
+    return { success: true };
   } catch (error) {
     return handleError(error) as ErrorResponse;
   }

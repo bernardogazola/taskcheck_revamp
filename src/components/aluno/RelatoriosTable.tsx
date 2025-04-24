@@ -52,15 +52,20 @@ import {
   DialogDescription,
   DialogHeader,
 } from "@/components/ui/dialog";
-import { Ellipsis, CircleAlert } from "lucide-react";
+import { Ellipsis, CircleAlert, Loader2, Download } from "lucide-react";
 import { useDebounce } from "@uidotdev/usehooks";
-import { deleteCurso, getAllCursos } from "@/lib/actions/admin.action";
-import CursoFormDialog from "@/components/admin/cursos/add/CursoFormDialog";
-import { deleteAtividade, getAllActivities } from "@/lib/actions/aluno.action";
+import {
+  deleteAtividade,
+  DownloadActionResponse,
+  downloadCertificado,
+  getAllActivities,
+} from "@/lib/actions/aluno.action";
 import { ptBR } from "date-fns/locale";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import RelatorioFormDialog from "./add/RelatorioFormDialog";
+import RelatorioFormDialog from "@/components/aluno/add/RelatorioFormDialog";
+import { triggerClientDownload } from "@/lib/utils";
+import RelatorioEditDialog from "@/components/aluno/edit/RelatorioEditDialog";
 
 type AtividadeWithRelations = RelatorioAtividade & {
   categoria: {
@@ -194,24 +199,55 @@ const RelatoriosTable = () => {
   });
 
   const handleDeleteAtividades = async () => {
-    try {
-      const selectedIds: number[] = [];
-      Object.keys(rowSelection).forEach((index) => {
-        const atividadeIndex = parseInt(index, 10);
-        if (atividades[atividadeIndex]) {
-          selectedIds.push(atividades[atividadeIndex].id);
-        }
-      });
+    const deletableIds: number[] = [];
+    const skippedCount = { count: 0 }; // Use an object to allow modification in forEach
 
+    Object.keys(rowSelection).forEach((index) => {
+      const atividadeIndex = parseInt(index, 10);
+      const atividade = atividades[atividadeIndex];
+      if (atividade) {
+        if (atividade.status === StatusRelatorio.AGUARDANDO_VALIDACAO) {
+          deletableIds.push(atividade.id);
+        } else {
+          skippedCount.count++;
+        }
+      }
+    });
+
+    if (deletableIds.length === 0) {
+      toast.info("Nenhuma atividade selecionada pode ser excluída.", {
+        description:
+          "Apenas atividades com status 'Aguardando Validação' podem ser excluídas.",
+      });
+      setRowSelection({});
+      return;
+    }
+
+    try {
       await Promise.all(
-        selectedIds.map(async (id) => {
+        deletableIds.map(async (id) => {
           return await deleteAtividadeMutation.mutateAsync(id);
         })
       );
 
+      if (skippedCount.count > 0) {
+        toast.warning(`Exclusão parcial concluída`, {
+          description: `${skippedCount.count} atividade${
+            skippedCount.count > 1 ? "s" : ""
+          } não ${skippedCount.count > 1 ? "puderam" : "pôde"} ser excluída${
+            skippedCount.count > 1 ? "s" : ""
+          } pois não estava${
+            skippedCount.count > 1 ? "m" : ""
+          } com status 'Aguardando Validação'.`,
+        });
+      } else {
+        // Success toast is handled by the mutation's onSuccess
+      }
+
       setRowSelection({});
     } catch (error) {
-      handleError(error);
+      // Error toast is handled by the mutation's onError
+      handleError(error); // Keep for logging or other side effects
     }
   };
 
@@ -390,6 +426,63 @@ function RowActions({ row }: { row: Row<AtividadeWithRelations> }) {
     },
   });
 
+  const downloadCertificadoMutation = useMutation({
+    mutationFn: async (filename: string) => {
+      const response = (await downloadCertificado(
+        filename
+      )) as DownloadActionResponse;
+      if (!response.success) {
+        throw new Error(
+          response.error?.message || "Falha ao baixar certificado"
+        );
+      }
+      return response.data;
+    },
+    onSuccess: (data) => {
+      try {
+        triggerClientDownload(
+          data.arrayBuffer,
+          data.filename,
+          data.contentType
+        );
+        toast.success("Download iniciado", {
+          description: "O certificado começou a ser baixado.",
+        });
+      } catch (error) {
+        toast.error("Falha ao iniciar download", {
+          description:
+            error instanceof Error ? error.message : "Erro desconhecido.",
+        });
+        console.error("Client-side download error:", error);
+      }
+      setOpen(false);
+    },
+    onError: (error) => {
+      toast.error("Falha ao baixar certificado", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "Por favor, tente novamente.",
+      });
+      handleError(error);
+    },
+  });
+
+  const handleDownloadClick = () => {
+    const filename = row.original.certificado;
+    if (filename) {
+      downloadCertificadoMutation.mutate(filename);
+    } else {
+      toast.error("Nome do arquivo inválido", {
+        description:
+          "Não foi possível encontrar o nome do arquivo do certificado.",
+      });
+    }
+  };
+
+  const isStatusWaitingValidation =
+    row.original.status === StatusRelatorio.AGUARDANDO_VALIDACAO;
+
   return (
     <>
       <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -399,7 +492,7 @@ function RowActions({ row }: { row: Row<AtividadeWithRelations> }) {
               size="icon"
               variant="ghost"
               className="shadow-none"
-              aria-label="Editar atividade"
+              aria-label="Ações do relatório"
             >
               <Ellipsis size={16} aria-hidden="true" />
             </Button>
@@ -409,13 +502,33 @@ function RowActions({ row }: { row: Row<AtividadeWithRelations> }) {
           <DropdownMenuGroup>
             <DropdownMenuItem
               onClick={() => setEditDialogOpen(true)}
+              disabled={!isStatusWaitingValidation}
               onSelect={(e) => {
                 e.preventDefault();
-                setOpen(false);
+                if (isStatusWaitingValidation) {
+                  setOpen(false);
+                }
               }}
             >
               <span>Editar</span>
               <DropdownMenuShortcut>⌘E</DropdownMenuShortcut>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={handleDownloadClick}
+              disabled={
+                downloadCertificadoMutation.isPending ||
+                !row.original.certificado
+              }
+              onSelect={(e) => {
+                e.preventDefault();
+              }}
+            >
+              {downloadCertificadoMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              <span>Baixar certificado</span>
             </DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
@@ -423,10 +536,17 @@ function RowActions({ row }: { row: Row<AtividadeWithRelations> }) {
             <AlertDialogTrigger asChild>
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
+                disabled={
+                  !isStatusWaitingValidation ||
+                  deleteAtividadeMutation.isPending
+                }
                 onSelect={(e) => {
                   e.preventDefault();
                 }}
               >
+                {deleteAtividadeMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
                 <span>Excluir</span>
                 <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
               </DropdownMenuItem>
@@ -443,7 +563,8 @@ function RowActions({ row }: { row: Row<AtividadeWithRelations> }) {
                   <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
                   <AlertDialogDescription>
                     Esta ação não pode ser revertida. Isso excluirá
-                    permanentemente a atividade.
+                    permanentemente a atividade{" "}
+                    <strong>{row.original.nome}</strong>.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
               </div>
@@ -451,8 +572,12 @@ function RowActions({ row }: { row: Row<AtividadeWithRelations> }) {
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={() => deleteAtividadeMutation.mutate()}
+                  disabled={deleteAtividadeMutation.isPending}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
-                  Excluir
+                  {deleteAtividadeMutation.isPending
+                    ? "Excluindo..."
+                    : "Excluir"}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -463,18 +588,19 @@ function RowActions({ row }: { row: Row<AtividadeWithRelations> }) {
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent>
           <DialogHeader className="text-left">
-            <DialogTitle className="text-base">Editar Categoria</DialogTitle>
+            <DialogTitle className="text-base">Editar Atividade</DialogTitle>
             <DialogDescription>
-              Atualize as informações da atividade selecionada.
+              Atualize as informações da atividade selecionada. Somente
+              atividades com status 'Aguardando Validação' podem ser editadas.
             </DialogDescription>
           </DialogHeader>
-          {/* <EditCursoDialog
-            categoria={row.original}
+          <RelatorioEditDialog
+            relatorio={row.original}
             onSuccess={() => {
-              queryClient.invalidateQueries({ queryKey: ["categories"] });
+              queryClient.invalidateQueries({ queryKey: ["atividades"] });
               setEditDialogOpen(false);
             }}
-          /> */}
+          />
         </DialogContent>
       </Dialog>
     </>

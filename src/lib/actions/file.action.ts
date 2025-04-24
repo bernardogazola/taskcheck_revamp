@@ -95,3 +95,31 @@ export async function downloadFile(filename: string) {
     return handleError(error) as ErrorResponse;
   }
 }
+
+export async function deleteFile(filename: string) {
+  const validationResult = await action({
+    params: { filename },
+    schema: z.object({ filename: z.string() }),
+    authorize: true,
+  });
+
+  if (validationResult instanceof Error) {
+    return handleError(validationResult) as ErrorResponse;
+  }
+
+  try {
+    const { error } = await supabase.storage
+      .from("certificado")
+      .remove([filename]);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    return handleError(error) as ErrorResponse;
+  }
+}

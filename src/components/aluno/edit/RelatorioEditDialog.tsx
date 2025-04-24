@@ -1,11 +1,13 @@
+// src/components/aluno/edit/RelatorioEditDialog.tsx
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, useEffect } from "react";
 import { LoaderCircle } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "@tanstack/react-form";
 import { toast } from "sonner";
+import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,21 +23,37 @@ import {
   RelatorioFormData,
   relatorioSchema,
 } from "@/lib/validators/reportSchema";
-import { addActivity, getAllCategories } from "@/lib/actions/aluno.action";
+import { editActivity, getAllCategories } from "@/lib/actions/aluno.action";
 import { Textarea } from "@/components/ui/textarea";
-import { SelectItem } from "@/components/ui/select";
 import {
   Select,
   SelectContent,
+  SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Categoria } from "@prisma/client";
-interface AddRelatorioDialogProps {
+import { Categoria, RelatorioAtividade, StatusRelatorio } from "@prisma/client";
+import { ptBR } from "date-fns/locale";
+
+// Reuse the type from RelatoriosTable if possible, or redefine/import
+type AtividadeWithRelations = RelatorioAtividade & {
+  categoria: {
+    id: number;
+    nome: string;
+    carga_horaria: number;
+  };
+  feedbacks: any[]; // Adjust type as needed
+};
+
+interface EditRelatorioDialogProps {
+  relatorio: AtividadeWithRelations;
   onSuccess?: () => void;
 }
 
-const AddRelatorioDialog = ({ onSuccess }: AddRelatorioDialogProps) => {
+const RelatorioEditDialog = ({
+  relatorio,
+  onSuccess,
+}: EditRelatorioDialogProps) => {
   const id = useId();
   const queryClient = useQueryClient();
   const [serverError, setServerError] = useState<string | null>(null);
@@ -43,7 +61,7 @@ const AddRelatorioDialog = ({ onSuccess }: AddRelatorioDialogProps) => {
   const {
     data: categoriasData,
     isLoading: isLoadingCategorias,
-    error,
+    error: categoriesError,
   } = useQuery({
     queryKey: ["categorias"],
     queryFn: async () => await getAllCategories(),
@@ -51,58 +69,70 @@ const AddRelatorioDialog = ({ onSuccess }: AddRelatorioDialogProps) => {
 
   const categorias = categoriasData?.data || [];
 
-  const addRelatorioMutation = useMutation({
+  const editRelatorioMutation = useMutation({
     mutationFn: async (formData: RelatorioFormData) => {
-      const response = (await addActivity(formData)) as ActionResponse;
+      const response = (await editActivity(
+        relatorio.id,
+        formData
+      )) as ActionResponse;
       if (!response.success) {
-        throw new Error(
-          response.error?.message || "Falha ao adicionar relatório"
-        );
+        throw new Error(response.error?.message || "Falha ao editar relatório");
       }
       return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["atividades"] });
-      toast.success("Relatório adicionado", {
-        description: "O relatório foi adicionado com sucesso.",
+      toast.success("Relatório atualizado", {
+        description: "O relatório foi atualizado com sucesso.",
       });
       onSuccess?.();
     },
     onError: (error) => {
-      toast.error("Falha ao adicionar relatório", {
+      setServerError(error.message);
+      toast.error("Falha ao atualizar relatório", {
         description: error.message,
       });
     },
   });
 
-  // Initialize form with default values
+  const formattedDate = format(
+    new Date(relatorio.data_realizacao),
+    "yyyy-MM-dd"
+  );
+
   const form = useForm({
     defaultValues: {
-      nome: "",
-      texto_reflexao: "",
-      data_realizacao: "",
-      id_categoria: "",
-      certificado: new File([""], "No file chosen"),
+      nome: relatorio.nome,
+      texto_reflexao: relatorio.texto_reflexao,
+      data_realizacao: formattedDate,
+      id_categoria: relatorio.id_categoria.toString(),
+      certificado: new File([""], "No file chosen", {
+        type: "application/pdf",
+      }),
     },
     validators: {
       onChange: relatorioSchema,
     },
     onSubmit: async ({ value }) => {
       setServerError(null);
-      await addRelatorioMutation.mutateAsync(value);
+      await editRelatorioMutation.mutateAsync(value);
     },
   });
 
+  const isFormDisabled =
+    relatorio.status !== StatusRelatorio.AGUARDANDO_VALIDACAO ||
+    editRelatorioMutation.isPending;
+
+  useEffect(() => {
+    if (categoriesError) {
+      toast.error("Erro ao carregar categorias", {
+        description: categoriesError.message,
+      });
+    }
+  }, [categoriesError]);
+
   return (
     <>
-      <DialogHeader className="text-left">
-        <DialogTitle className="text-base">Adicionar Atividade</DialogTitle>
-        <DialogDescription>
-          Adicione um novo relatório de atividade ao sistema com as informações
-          desejadas.
-        </DialogDescription>
-      </DialogHeader>
-
       <div className="py-4">
         <form
           className="space-y-4"
@@ -122,6 +152,7 @@ const AddRelatorioDialog = ({ onSuccess }: AddRelatorioDialogProps) => {
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
                   onBlur={field.handleBlur}
+                  disabled={isFormDisabled}
                   aria-invalid={
                     field.state.meta.isTouched &&
                     !!field.state.meta.errors.length
@@ -144,12 +175,13 @@ const AddRelatorioDialog = ({ onSuccess }: AddRelatorioDialogProps) => {
                   Texto de Reflexão
                 </Label>
                 <Textarea
-                  id={id}
+                  id={`${id}-texto_reflexao`}
                   placeholder="Texto de Reflexão"
                   className="field-sizing-content max-h-29.5 min-h-0 resize-none py-1.75"
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
                   onBlur={field.handleBlur}
+                  disabled={isFormDisabled}
                   aria-invalid={
                     field.state.meta.isTouched &&
                     !!field.state.meta.errors.length
@@ -178,6 +210,7 @@ const AddRelatorioDialog = ({ onSuccess }: AddRelatorioDialogProps) => {
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
                   onBlur={field.handleBlur}
+                  disabled={isFormDisabled}
                   aria-invalid={
                     field.state.meta.isTouched &&
                     !!field.state.meta.errors.length
@@ -200,7 +233,7 @@ const AddRelatorioDialog = ({ onSuccess }: AddRelatorioDialogProps) => {
                 <Select
                   onValueChange={(value) => field.handleChange(value)}
                   value={field.state.value}
-                  disabled={isLoadingCategorias}
+                  disabled={isLoadingCategorias || isFormDisabled}
                 >
                   <SelectTrigger
                     id={`${id}-id_categoria`}
@@ -220,12 +253,9 @@ const AddRelatorioDialog = ({ onSuccess }: AddRelatorioDialogProps) => {
                   </SelectTrigger>
                   <SelectContent>
                     {!isLoadingCategorias &&
-                      categorias.map((categoria: Categoria) => (
-                        <SelectItem
-                          key={categoria.id}
-                          value={categoria.id.toString()}
-                        >
-                          {categoria.nome}
+                      categorias.map((cat: Categoria) => (
+                        <SelectItem key={cat.id} value={cat.id.toString()}>
+                          {cat.nome}
                         </SelectItem>
                       ))}
                   </SelectContent>
@@ -243,7 +273,14 @@ const AddRelatorioDialog = ({ onSuccess }: AddRelatorioDialogProps) => {
           <form.Field name="certificado">
             {(field) => (
               <div className="space-y-2">
-                <Label htmlFor={`${id}-certificado`}>Upload de Arquivos</Label>
+                <Label htmlFor={`${id}-certificado`}>
+                  Certificado (Opcional: Anexe para substituir)
+                </Label>
+                {relatorio.certificado && (
+                  <p className="text-xs text-muted-foreground">
+                    Arquivo atual: {relatorio.certificado.split("/").pop()}
+                  </p>
+                )}
                 <Input
                   id={`${id}-certificado`}
                   type="file"
@@ -251,6 +288,7 @@ const AddRelatorioDialog = ({ onSuccess }: AddRelatorioDialogProps) => {
                     field.handleChange(e.target.files![0]);
                   }}
                   onBlur={field.handleBlur}
+                  disabled={isFormDisabled}
                   aria-invalid={
                     field.state.meta.isTouched &&
                     !!field.state.meta.errors.length
@@ -279,21 +317,18 @@ const AddRelatorioDialog = ({ onSuccess }: AddRelatorioDialogProps) => {
           </Button>
         </DialogClose>
         <form.Subscribe
-          selector={(state) => [
-            state.canSubmit,
-            state.isSubmitting || addRelatorioMutation.isPending,
-          ]}
+          selector={(state) => [state.canSubmit, state.isSubmitting]}
           children={([canSubmit, isSubmitting]) => (
             <Button
               type="button"
               variant="default"
-              disabled={!canSubmit || isSubmitting}
+              disabled={!canSubmit || isSubmitting || isFormDisabled}
               onClick={() => form.handleSubmit()}
             >
-              {isSubmitting && (
+              {(isSubmitting || editRelatorioMutation.isPending) && (
                 <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
               )}
-              Adicionar Atividade
+              Salvar Alterações
             </Button>
           )}
         />
@@ -302,4 +337,4 @@ const AddRelatorioDialog = ({ onSuccess }: AddRelatorioDialogProps) => {
   );
 };
 
-export default AddRelatorioDialog;
+export default RelatorioEditDialog;
