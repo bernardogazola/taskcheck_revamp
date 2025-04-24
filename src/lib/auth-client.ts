@@ -6,9 +6,7 @@ export const authClient = createAuthClient({
   baseURL:
     process.env.NEXT_PUBLIC_APP_URL ||
     (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`),
-  trustedOrigins: (process.env.VERCEL_URL && [process.env.VERCEL_URL]) || [
-    "localhost:3000",
-  ],
+  trustedOrigins: ["localhost:3000", process.env.VERCEL_URL!],
   plugins: [
     adminClient({
       ac,
