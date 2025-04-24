@@ -8,7 +8,9 @@ import { ac, admin, aluno, professor, coordenador } from "@/lib/permissions";
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET!,
   appName: "TaskCheck",
-  baseURL: process.env.NEXT_PUBLIC_APP_URL!,
+  baseURL:
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`),
   basePath: "/api/auth",
   database: prismaAdapter(prisma, {
     provider: "postgresql",

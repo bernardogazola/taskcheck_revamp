@@ -3,7 +3,9 @@ import { adminClient, inferAdditionalFields } from "better-auth/client/plugins";
 import type { auth } from "@/lib/auth";
 import { ac, admin, aluno, coordenador, professor } from "@/lib/permissions";
 export const authClient = createAuthClient({
-  baseURL: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+  baseURL:
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`),
   plugins: [
     adminClient({
       ac,
