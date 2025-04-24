@@ -19,6 +19,9 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: false,
   },
+  advanced: {
+    useSecureCookies: process.env.VERCEL_URL ? true : false,
+  },
   socialProviders: {},
   session: {
     cookieCache: {
